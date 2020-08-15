@@ -1,12 +1,12 @@
 ## Active Grille Shutter
 Arduino Due project for Active Grille Shutter (AGS) control.
 
-Project in development...
-
 ### Libraries for Arduino IDE:
 - [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library)
 - [Adafruit_SSD1306](https://github.com/adafruit/Adafruit_SSD1306)
-- [Servo](http://www.arduino.cc/en/Reference/Servo)
+- [CAN BUS Shield](https://github.com/Seeed-Studio/CAN_BUS_Shield)
+- [Servo](https://www.arduino.cc/reference/en/libraries/servo/)
+- [SPI](https://www.arduino.cc/en/reference/SPI)
 
 ### Hardware for project:
 - Arduino Due
@@ -16,5 +16,4 @@ Project in development...
 - Dupont wires
 - Breadboard
 - Micro USB Cable
-- MB102 Breadboard Power Supply
 - DC 9V 1A Power Supply Adapter 5.5x2.1mm
