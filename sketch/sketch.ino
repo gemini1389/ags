@@ -129,7 +129,7 @@ void loop() {
 
 // Open or close grille shutters
 void openCloseShutters() {
-  float temp = getEngineTemp2();
+  float temp = getEngineTemp();
   float speed = getSpeed();
   bool openShutters = true;
 
@@ -137,17 +137,20 @@ void openCloseShutters() {
     openShutters = false;
   }
 
-  if (speed > 100) {
+  if (speed > 130) {
     openShutters = (temp > 90);
   }
 
-  print("Shutters must be ");
+  print("[INFO] Shutters must be ");
   print(String(openShutters ? servoDegreeMin : servoDegreeMax));
   print(" ");
   print("(" + String(openShutters ? "open" : "close") + ")");
   println("");
 
-  writeServo(openShutters ? servoDegreeMin : servoDegreeMax);
+  int degreeNeedle = openShutters ? servoDegreeMin : servoDegreeMax;
+  if (!isServoRotated(degreeNeedle)) {
+    writeServo(degreeNeedle);
+  }
 }
 
 void renderAllData() {
