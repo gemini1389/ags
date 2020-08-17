@@ -20,7 +20,6 @@
 // GPIO the display is attached to
 #define pinCanCs        10
 #define pinCanInt       11
-#define interruptCan    0
 const int SPI_CS_PIN = pinCanCs;
 const int INT_PIN = pinCanInt;
 
@@ -48,12 +47,12 @@ const int INT_PIN = pinCanInt;
 #define servoMaxAttempts  3
 
 // Min and max degree for rotation servo
-#define servoDegreeMin  45  // 0
-#define servoDegreeMax  105 // 170
+#define servoDegreeMin  45
+#define servoDegreeMax  105
 
 // Min and max analog values
-#define servoAnalogMin  320 // 195
-#define servoAnalogMax  485 // 645
+#define servoAnalogMin  330
+#define servoAnalogMax  480
 
 // Possible difference between values
 #define servoAnalogDegreesDiff  5
@@ -76,11 +75,8 @@ MCP_CAN CAN(pinCanCs);
 
 bool isDataUpdated = false;
 
-float cvtfTemp;
 float engineTemp;
-float engineTemp2;
 float carSpeed;
-float carSpeed2;
 int shutterDegree;
 
 int newDegree = servoDegreeMin;
@@ -133,7 +129,7 @@ void openCloseShutters() {
   float speed = getSpeed();
   bool openShutters = true;
 
-  if (temp <= 75) {
+  if (temp < 70) {
     openShutters = false;
   }
 
@@ -166,21 +162,18 @@ void renderAllData() {
 
 void renderEngineTemp() {
   display.setCursor(0, 0);
-  //display.println(String(getEngineTemp(), 1) + " oC");
-  display.println(String(getEngineTemp(), 1) + "|" + String(getEngineTemp2(), 0));
+  display.println(String(getEngineTemp(), 1) + " oC");
 }
 
 void renderCarSpeed() {
   display.setCursor(0, 16);
-  //display.println(String(getSpeed(), 1) + " km/h");
-  display.println(String(getSpeed(), 1) + "|" + String(getSpeed2(), 1));
+  display.println(String(getSpeed(), 1) + " km/h");
 }
 
 void renderProgressBar() {
   int shutterDegrees = getShutterDegree();
-  //String text = String(shutterDegrees);
-  String text = String(getCvtfTemp(), 1);
   int progress = map(shutterDegrees, servoDegreeMin, servoDegreeMax, 0, progressBarLengthInner);
+  String text = String(shutterDegrees);
   int y = constrain(51, 0, SCREEN_HEIGHT);
   int x = (SCREEN_WIDTH - text.length() * DEFAULT_SYMBOL_WIDTH * progressBarTextSize) / 2;
 
@@ -205,24 +198,12 @@ void renderProgressBar() {
   display.display();
 }
 
-float getCvtfTemp() {
-  return cvtfTemp;
-}
-
 float getEngineTemp() {
   return engineTemp;
 }
 
-float getEngineTemp2() {
-  return engineTemp2;
-}
-
 float getSpeed() {
   return carSpeed;
-}
-
-float getSpeed2() {
-  return carSpeed2;
 }
 
 int getShutterDegree() {
@@ -233,7 +214,7 @@ int getShutterDegree() {
 void canMessageProcessing(unsigned long messageId, byte* messageData) {
   String id = String(messageId, HEX);
 
-  // Engine temp 1
+  // Engine temp
   if (id == "324") {
     float engineTempOld = getEngineTemp();
 
@@ -245,43 +226,16 @@ void canMessageProcessing(unsigned long messageId, byte* messageData) {
       println("EngineTemp: " + String(getEngineTemp()));
     }
   }
-  // Engine temp 2
-  else if (id == "396") {
-    float engineTemp2Old = getEngineTemp2();
-
-    engineTemp2 = (float) messageData[2];
-
-    if (engineTemp2Old != engineTemp2) {
-      isDataUpdated = true;
-
-      println("EngineTemp2: " + String(getEngineTemp2()));
-    }
-  }
   // Speeds (general)
   else if (id == "158") {
     float carSpeedOld = getSpeed();
-    float carSpeed2Old = getSpeed2();
 
     carSpeed = (messageData[0] * 256 + messageData[1]) / 100.0;
-    carSpeed2 = (messageData[4] * 256 + messageData[5]) / 100.0;
 
-    if (carSpeedOld != carSpeed || carSpeed2Old != carSpeed2) {
+    if (carSpeedOld != carSpeed) {
       isDataUpdated = true;
 
       println("Speed: " + String(getSpeed()));
-      println("Speed2: " + String(getSpeed2()));
-    }
-  }
-  // CVTF temp
-  else if (id == "510") {
-    float cvtfTempOld = getCvtfTemp();
-
-    cvtfTemp = messageData[5] - 40.0;
-
-    if (cvtfTempOld != cvtfTemp) {
-      isDataUpdated = true;
-
-      println("CvtfTemp: " + String(getCvtfTemp()));
     }
   }
 }
@@ -322,9 +276,6 @@ bool isServoRotated(int degreeNeedle) {
   }
 
   println(rotated ? "[OK] Servo is rotated!" : "[FAIL] Servo is not rotated!");
-
-  display.println("Servo: " + String(analogVal) + "|" + String(degreeNeedle));
-  display.display();
 
   return rotated;
 }
@@ -373,23 +324,19 @@ void initDisplay() {
 
 // CAN bus initialization
 void initCan() {
-  //pinMode(pinCanInt, INPUT);
   while (CAN_OK != CAN.begin(CAN_500KBPS, MCP_8MHz)) {
     println("[FAIL] CAN BUS module init fail");
     println("[FAIL] Init CAN BUS module again");
     delay(100);
   }
-  //CAN.setMode(MODE_NORMAL);
 
   println("[INIT] CAN initialized");
 
   // Hardware filters
   CAN.init_Mask(0, 0, 0x158);
-  CAN.init_Mask(1, 0, 0x510);
+  CAN.init_Mask(1, 0, 0x324);
   CAN.init_Filt(0, 0, 0x158);
   CAN.init_Filt(1, 0, 0x324);
-  CAN.init_Filt(2, 0, 0x396);
-  CAN.init_Filt(3, 0, 0x510);
 
   println("[INIT] CAN filters added");
 }
@@ -422,8 +369,8 @@ void servoDiagnostics() {
   bool diagStatus = true;
   diagStatus = writeServo(servoDegreeMax, true);
 
-  //display.println("Servo diag #1: " + String(diagStatus ? "OK" : "FAIL"));
-  //display.display();
+  display.println("Servo diag #1: " + String(diagStatus ? "OK" : "FAIL"));
+  display.display();
 
   print(diagStatus ? "[OK]" : "[FAIL]");
   println(" Servo diagnostics #1 (to " + String(servoDegreeMax) + "°)");
@@ -432,8 +379,8 @@ void servoDiagnostics() {
     diagStatus = writeServo(servoDegreeMin, true);
   }
 
-  //display.println("Servo diag #2: " + String(diagStatus ? "OK" : "FAIL"));
-  //display.display();
+  display.println("Servo diag #2: " + String(diagStatus ? "OK" : "FAIL"));
+  display.display();
 
   print(diagStatus ? "[OK]" : "[FAIL]");
   println(" Servo diagnostics #2 (to " + String(servoDegreeMin) + "°)");
@@ -442,8 +389,8 @@ void servoDiagnostics() {
     diagStatus = writeServo(servoDegreeMax, true);
   }
 
-  //display.println("Servo diag #3: " + String(diagStatus ? "OK" : "FAIL"));
-  //display.display();
+  display.println("Servo diag #3: " + String(diagStatus ? "OK" : "FAIL"));
+  display.display();
 
   print(diagStatus ? "[OK]" : "[FAIL]");
   println(" Servo diagnostics #3 (to " + String(servoDegreeMax) + "°)");
@@ -452,8 +399,8 @@ void servoDiagnostics() {
     diagStatus = writeServo(servoDegreeMin, true);
   }
 
-  //display.println("Servo diag #4: " + String(diagStatus ? "OK" : "FAIL"));
-  //display.display();
+  display.println("Servo diag #4: " + String(diagStatus ? "OK" : "FAIL"));
+  display.display();
 
   print(diagStatus ? "[OK]" : "[FAIL]");
   println(" Servo diagnostics #4 (to " + String(servoDegreeMin) + "°)");

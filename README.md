@@ -11,6 +11,7 @@ Added code to close curtains at high speed to increase vehicle aerodynamics. The
 - selection of the maximum temperature for opening the curtains
 - selection of vehicle speed for closing
 - the delay between opening and closing the shutters at high speed
+- automatic shutter opening after engine stop
 
 ### Libraries for Arduino IDE:
 - [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library)
